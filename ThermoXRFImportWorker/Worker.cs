@@ -20,9 +20,9 @@ namespace ThermoXRFImportWorker
         private readonly IOptions<XrfDataModel> options;
         private readonly FileSystemWatcher _fileSystemWatcher;
         //private string lastFileProcessed = string.Empty;
-        private readonly Int32 port = 8111;
         private TcpClient client;
         private uint updateId = 0;
+
 
         public Worker(ILogger<Worker> logger, IOptions<XrfDataModel> options, FileSystemWatcher fileSystemWatcher, TcpClient tcpClient)
         {
@@ -30,7 +30,7 @@ namespace ThermoXRFImportWorker
             this.options = options;
             _fileSystemWatcher = fileSystemWatcher;
             client = tcpClient;
-            client.Connect(options.Value.DatapoolIp, port);            
+            client.Connect(options.Value.DatapoolIp, options.Value.Port);            
         }
         
         public override async Task StartAsync(CancellationToken token)
