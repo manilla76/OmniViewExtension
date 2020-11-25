@@ -1,0 +1,10 @@
+﻿{
+  "profiles": {
+    "ThermoPileModelService": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

@@ -4,11 +4,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{A6E9C5DB-15EB-45DF-B943-2A3427E8D1A5}</ProjectGuid>
+    <ProjectGuid>{83F92D5E-1243-47DC-ACC3-629548DD7217}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>OmniViewExtension</RootNamespace>
-    <AssemblyName>OmniViewExtension</AssemblyName>
+    <RootNamespace>OmniCustomExtension</RootNamespace>
+    <AssemblyName>OmniCustomExtension</AssemblyName>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
@@ -34,6 +34,7 @@
     <Reference Include="BlendingOptimizationEngine">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Thermo\Nautilus\Omni\Viewer\BlendingOptimizationEngine.dll</HintPath>
     </Reference>
+    <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -49,9 +50,23 @@
     <Reference Include="Thermo.argonautViewerLibrary">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Thermo\Nautilus\Omni\Viewer\Thermo.argonautViewerLibrary.dll</HintPath>
     </Reference>
+    <Reference Include="ThermoBaseObjects, Version=3.3.0.6221, Culture=neutral, PublicKeyToken=33d7e9b6c87820cf" />
     <Reference Include="ThermoTererlik">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Thermo\Nautilus\Omni\Viewer\ThermoTererlik.dll</HintPath>
     </Reference>
+    <Reference Include="ThermoWpfConverters">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Thermo\Nautilus\Omni\Viewer\ThermoWpfConverters.dll</HintPath>
+    </Reference>
+    <Reference Include="ThermoWpfDictionaries">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Thermo\Nautilus\Omni\Viewer\ThermoWpfDictionaries.dll</HintPath>
+    </Reference>
+    <Reference Include="ThermoWpfHelpers">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Thermo\Nautilus\Omni\Viewer\ThermoWpfHelpers.dll</HintPath>
+    </Reference>
+    <Reference Include="ThermoWpfWidgets">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Thermo\Nautilus\Omni\Viewer\ThermoWpfWidgets.dll</HintPath>
+    </Reference>
+    <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="OmniViewExtension.cs" />

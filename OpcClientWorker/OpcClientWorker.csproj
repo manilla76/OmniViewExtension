@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <UserSecretsId>dotnet-OpcClientWorker-05D993E0-AA3C-4E17-ADF1-779BF59A5080</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Autofac.Extensions.DependencyInjection" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="3.1.5" />
+    <PackageReference Include="Workstation.UaClient" Version="2.6.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OpcDatapoolLibrary\OpcDatapoolLibrary.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="ThermoBaseObjects">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Thermo\Nautilus\Omni\Viewer\ThermoBaseObjects.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>
