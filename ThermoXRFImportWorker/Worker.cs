@@ -10,33 +10,34 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace ThermoXRFImportWorker
 {
     public class Worker : BackgroundService
     {
         private readonly ILogger<Worker> _logger;
-        private readonly IConfiguration _configuration;
+        private readonly IOptions<XrfDataModel> options;
         private readonly FileSystemWatcher _fileSystemWatcher;
         //private string lastFileProcessed = string.Empty;
         private readonly Int32 port = 8111;
         private TcpClient client;
         private uint updateId = 0;
 
-        public Worker(ILogger<Worker> logger, IConfiguration configuration, FileSystemWatcher fileSystemWatcher, TcpClient tcpClient)
+        public Worker(ILogger<Worker> logger, IOptions<XrfDataModel> options, FileSystemWatcher fileSystemWatcher, TcpClient tcpClient)
         {
             _logger = logger;
-            _configuration = configuration;
+            this.options = options;
             _fileSystemWatcher = fileSystemWatcher;
             client = tcpClient;
-            client.Connect(_configuration["Data:DatapoolIp"], port);
+            client.Connect(options.Value.DatapoolIp, port);            
         }
         
         public override async Task StartAsync(CancellationToken token)
         {
             _fileSystemWatcher.Created += FileSystemWatcher_Created;
             _fileSystemWatcher.Changed += FileSystemWatcher_Changed;
-            _fileSystemWatcher.Path = _configuration["Data:Path"];
+            _fileSystemWatcher.Path = options.Value.Path;
             _fileSystemWatcher.EnableRaisingEvents = true;
             _fileSystemWatcher.Filters.Add("*.qan");
             _fileSystemWatcher.Filters.Add("*.QAN");
@@ -49,7 +50,7 @@ namespace ThermoXRFImportWorker
             //    _configuration["Data:Path"], _configuration["Data:DatapoolIp"], _configuration["Data:DpGroup"],
             //    _configuration["Data:Update"], _configuration["Data:SamplePeriod"]);
         }
-
+                
         public override async Task StopAsync(CancellationToken token)
         {
             _fileSystemWatcher.Created -= FileSystemWatcher_Created;
@@ -87,8 +88,9 @@ namespace ThermoXRFImportWorker
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-
+                
             }
+            
         }
 
         private void RunScript(string filename)
@@ -119,7 +121,7 @@ namespace ThermoXRFImportWorker
             using (var process = new Process())
             {
                 process.StartInfo.FileName = @"rexx";
-                process.StartInfo.Arguments = $"{_configuration["Data:Path"]}ParseAssayFile.rex {assay}";
+                process.StartInfo.Arguments = $"{options.Value.Path}ParseAssayFile.rex {assay}";
                 process.StartInfo.CreateNoWindow = true;
                 process.StartInfo.UseShellExecute = false;
                 process.StartInfo.RedirectStandardOutput = true;
@@ -154,17 +156,17 @@ namespace ThermoXRFImportWorker
             if (string.IsNullOrEmpty(data)) 
             { 
                 updateId++; 
-                SendToDatapool(FormatMessage(_configuration["Data:Update"], "Update", updateId.ToString())); 
+                SendToDatapool(FormatMessage(options.Value.Update, "Update", updateId.ToString())); 
                 return; 
             }
             _logger.LogInformation(data);
             var info = data.Split(',');
             //_logger.LogInformation($"DpGroup: {_configuration["Data.DpGroup"]}");
-            SendToDatapool(FormatMessage(_configuration["Data:DpGroup"], info[0], info[1]));
+            SendToDatapool(FormatMessage(options.Value.DpGroup, info[0], info[1]));
         }
 
         private string FormatMessage(string groupname, string tagname, string value ) => 
-            $"Write [<{groupname}><{tagname}><{value}><{DateTime.UtcNow.ToShortDateString()}><{DateTime.UtcNow.ToString("HH:mm:ss:FFF")}><{_configuration["Data:SamplePeriod"]}>]";
+            $"Write [<{groupname}><{tagname}><{value}><{DateTime.UtcNow.ToShortDateString()}><{DateTime.UtcNow.ToString("HH:mm:ss:FFF")}><{options.Value.SamplePeriod}>]";
         
         /// <summary>
         /// Encodes and sends the message to the datapool via tcp

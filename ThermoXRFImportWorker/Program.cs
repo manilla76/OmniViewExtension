@@ -23,6 +23,7 @@ namespace ThermoXRFImportWorker
                 })
                 .ConfigureServices((hostContext, services) =>
                 {
+                    services.Configure<XrfDataModel>(hostContext.Configuration.GetSection("XrfData"));
                     services.AddHostedService<Worker>();
                     services.Add(new ServiceDescriptor(typeof(FileSystemWatcher), new FileSystemWatcher()));
                     services.Add(new ServiceDescriptor(typeof(TcpClient), new TcpClient()));
