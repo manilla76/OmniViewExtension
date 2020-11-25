@@ -2,12 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -22,6 +20,7 @@ namespace ThermoXRFImportWorker
         //private string lastFileProcessed = string.Empty;
         private TcpClient client;
         private uint updateId = 0;
+        private readonly Dictionary<string, float> oxideValues = new Dictionary<string, float>();
 
 
         public Worker(ILogger<Worker> logger, IOptions<XrfDataModel> options, FileSystemWatcher fileSystemWatcher, TcpClient tcpClient)
@@ -39,12 +38,10 @@ namespace ThermoXRFImportWorker
             _fileSystemWatcher.Changed += FileSystemWatcher_Changed;
             _fileSystemWatcher.Path = options.Value.Path;
             _fileSystemWatcher.EnableRaisingEvents = true;
-            _fileSystemWatcher.Filters.Add("*.qan");
-            _fileSystemWatcher.Filters.Add("*.QAN");
-            _fileSystemWatcher.Filters.Add("*.txt");
-            _fileSystemWatcher.Filters.Add("*.TXT");
-            _fileSystemWatcher.Filters.Add("*.CSV");
-            _fileSystemWatcher.Filters.Add("*.csv");
+            foreach (var extension in options.Value.Extensions)
+            {
+                _fileSystemWatcher.Filters.Add(extension);
+            }           
             _logger.LogInformation($"Service started: {DateTime.Now}");
             //_logger.LogInformation("Data from appsettings: Path = {0}, DatapoolIp = {1}, DpGroup = {2}, Update = {3}, SamplePeriod = {4}",
             //    _configuration["Data:Path"], _configuration["Data:DatapoolIp"], _configuration["Data:DpGroup"],

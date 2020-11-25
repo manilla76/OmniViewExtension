@@ -11,5 +11,6 @@ namespace ThermoXRFImportWorker
         public string Update { get; set; }
         public string DpGroup { get; set; }
         public string[] Oxides { get; set; } = { "Al2O3", "CaO", "Cl", "Fe2O3", "K2O", "MgO", "Mn2O3", "Na2O", "SiO2", "SO3", "TiO2" };
+        public string[] Extensions { get; set; } = { "*.qan", "*.QAN", "*.txt", "*.TXT", "*.csv", "*.CSV" };
     }
 }
