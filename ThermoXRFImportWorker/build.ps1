@@ -1,3 +1,3 @@
 dotnet restore
 dotnet publish -o /publish/service
-sc.exe create MyWorkerService binpath= ./publish/service/ThermoXRFImportWorker.exe
+sc.exe create ThermoXrfImportService binpath= ./publish/service/ThermoXRFImportWorker.exe

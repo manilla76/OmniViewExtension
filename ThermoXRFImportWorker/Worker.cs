@@ -34,8 +34,23 @@ namespace ThermoXRFImportWorker
 
         private void InitializeCommunications()
         {
-            client.Connect(options.Value.DatapoolIp, options.Value.Port);
+            try
+            {
+                client.Connect(options.Value.DatapoolIp, options.Value.Port);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error attempting to connect to datapool.  {1}", ex.Message);
+            }
             
+            if (client.Connected)
+            {
+                foreach (var oxide in options.Value.Oxides)
+                {
+                    SendToDatapool($"CreateTag [<{options.Value.DpGroup}><{oxide}><Double>]");
+                }
+                SendToDatapool($"CreateTag [<{options.Value.Update}><Update><Int>]");
+            }
             //else
             //{
             //    DatapoolSvr.IpAddress = options.Value.DatapoolIp;
@@ -184,7 +199,7 @@ namespace ThermoXRFImportWorker
             if (string.IsNullOrEmpty(data))
             {
                 SendToDatapool(FormatMessage(options.Value.Update, "Update", updateId.ToString()));
-                 return;
+                return;
                 
                 //else
                 //{
@@ -215,6 +230,9 @@ namespace ThermoXRFImportWorker
             Encoding unicode = Encoding.Unicode;
             Byte[] data;
             data = unicode.GetBytes(msg);
+            try
+            {
+
             NetworkStream stream = client.GetStream();
 
             stream.Write(data, 0, data.Length);
@@ -225,6 +243,12 @@ namespace ThermoXRFImportWorker
             Int32 bytes = stream.Read(data, 0, data.Length);
             responseData = System.Text.Encoding.ASCII.GetString(data, 0, bytes);
             return responseData;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error writing to datapool. {1}", ex.Message);
+            }
+            return string.Empty;
         }
 
     }
