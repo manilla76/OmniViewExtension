@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using static Thermo.Datapool.Datapool;
 
 namespace ThermoXRFImportWorker
 {
@@ -20,7 +21,9 @@ namespace ThermoXRFImportWorker
         //private string lastFileProcessed = string.Empty;
         private TcpClient client;
         private uint updateId = 0;
-        private readonly Dictionary<string, float> oxideValues = new Dictionary<string, float>();
+        private bool useTcpMessaging = true;
+        private ITagInfo updateTag;
+        //private readonly Dictionary<string, ITagInfo> oxideValues = new Dictionary<string, ITagInfo>();
 
 
         public Worker(ILogger<Worker> logger, IOptions<XrfDataModel> options, FileSystemWatcher fileSystemWatcher, TcpClient tcpClient)
@@ -29,9 +32,27 @@ namespace ThermoXRFImportWorker
             this.options = options;
             _fileSystemWatcher = fileSystemWatcher;
             client = tcpClient;
-            client.Connect(options.Value.DatapoolIp, options.Value.Port);            
+            InitializeCommunications(useTcpMessaging);
         }
-        
+
+        private void InitializeCommunications(bool useTcpMessaging)
+        {
+            if (useTcpMessaging)
+            {
+                client.Connect(options.Value.DatapoolIp, options.Value.Port);
+            }
+            //else
+            //{
+            //    DatapoolSvr.IpAddress = options.Value.DatapoolIp;
+
+            //    foreach (var oxide in options.Value.Oxides)
+            //    {
+            //        oxideValues.Add(oxide, DatapoolSvr.CreateTagInfo(options.Value.DpGroup, oxide, dpTypes.FLOAT));
+            //    }
+            //    updateTag = DatapoolSvr.CreateTagInfo(options.Value.Update, "Update", dpTypes.INT);
+            //}
+        }
+
         public override async Task StartAsync(CancellationToken token)
         {
             _fileSystemWatcher.Created += FileSystemWatcher_Created;
@@ -52,6 +73,11 @@ namespace ThermoXRFImportWorker
         {
             _fileSystemWatcher.Created -= FileSystemWatcher_Created;
             _fileSystemWatcher.Changed -= FileSystemWatcher_Changed;
+            //foreach (var oxide in oxideValues)
+            //{
+            //    oxide.Value.Dispose();
+            //}
+            //updateTag.Dispose();
             _logger.LogInformation($"Service stopped: {DateTime.Now}");
         }
 
@@ -105,12 +131,12 @@ namespace ThermoXRFImportWorker
                 }
                 catch (Exception ex)
                 {
-                    //if (retryCount % 5 == 5) { _logger.LogError(ex.Message); }  // log every 5th attempt
-                    retryCount++;                    
+                    retryCount++;
+                    if (retryCount % 5 == 0) { _logger.LogError("File Read Error: {0}", ex.Message); }  // log every 5th attempt
                 }
                 if (retryCount >= 5)
                 {
-                    _logger.LogError($"File read failure on file {filename}");
+                    _logger.LogError("File read failure on file {0}", filename);
                     return;
                 }
             }   // Retries the file read 100 times then exits if failure            
@@ -128,21 +154,18 @@ namespace ThermoXRFImportWorker
                 process.ErrorDataReceived += (sender, data) =>
                 {
                     if (!string.IsNullOrEmpty(data.Data))
-                        _logger.LogWarning($"error results: {data.Data}");
+                        _logger.LogWarning("error results: {data.Data}", data.Data);
                 };
 
                 process.Start();
                 process.BeginOutputReadLine();
                 process.BeginErrorReadLine();
                 var exited = process.WaitForExit(1000 * 10);
-                _logger.LogInformation($"exited: {process.ExitCode}");
+                _logger.LogInformation("exited: {process.ExitCode}", process.ExitCode);
             }
-
-            //Random rand = new Random();
-            //var value = (rand.NextDouble() * 23).ToString();
-            //string test = await SendToDatapoolAsync(FormatMessage("test", "abcd", value));
             return;
         }
+
         /// <summary>
         /// Processes the data from the xrf sample file.  File returns oxideName, oxideValue
         /// </summary>
@@ -152,14 +175,39 @@ namespace ThermoXRFImportWorker
         {
             if (string.IsNullOrEmpty(data)) 
             { 
-                updateId++; 
-                SendToDatapool(FormatMessage(options.Value.Update, "Update", updateId.ToString())); 
-                return; 
+                updateId++;        
             }
+            else
+            {
             _logger.LogInformation(data);
+            }
+            SendToDatapool(data);
+        }
+
+        private void SendToDatapool(string data, bool useTcpMessaging)
+        {
+            if (string.IsNullOrEmpty(data))
+            {
+                if (useTcpMessaging)
+                {
+                    SendToDatapool(FormatMessage(options.Value.Update, "Update", updateId.ToString()));
+                    return;
+                }
+                //else
+                //{
+                //    updateTag.Write(updateId, DateTime.UtcNow, options.Value.SamplePeriod);
+                //    return;
+                //}
+            }
+
             var info = data.Split(',');
             //_logger.LogInformation($"DpGroup: {_configuration["Data.DpGroup"]}");
-            SendToDatapool(FormatMessage(options.Value.DpGroup, info[0], info[1]));
+            if (useTcpMessaging)
+            {
+                SendToDatapool(FormatMessage(options.Value.DpGroup, info[0], info[1]));
+                return;
+            }
+            //oxideValues[info[0]].Write(info[1], DateTime.UtcNow, options.Value.SamplePeriod);
         }
 
         private string FormatMessage(string groupname, string tagname, string value ) => 
