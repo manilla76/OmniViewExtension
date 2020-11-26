@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using static Thermo.Datapool.Datapool;
 
 namespace ThermoXRFImportWorker
 {
@@ -21,8 +20,6 @@ namespace ThermoXRFImportWorker
         //private string lastFileProcessed = string.Empty;
         private TcpClient client;
         private uint updateId = 0;
-        private bool useTcpMessaging = true;
-        private ITagInfo updateTag;
         //private readonly Dictionary<string, ITagInfo> oxideValues = new Dictionary<string, ITagInfo>();
 
 
@@ -32,15 +29,13 @@ namespace ThermoXRFImportWorker
             this.options = options;
             _fileSystemWatcher = fileSystemWatcher;
             client = tcpClient;
-            InitializeCommunications(useTcpMessaging);
+            InitializeCommunications();
         }
 
-        private void InitializeCommunications(bool useTcpMessaging)
+        private void InitializeCommunications()
         {
-            if (useTcpMessaging)
-            {
-                client.Connect(options.Value.DatapoolIp, options.Value.Port);
-            }
+            client.Connect(options.Value.DatapoolIp, options.Value.Port);
+            
             //else
             //{
             //    DatapoolSvr.IpAddress = options.Value.DatapoolIp;
@@ -188,11 +183,9 @@ namespace ThermoXRFImportWorker
         {
             if (string.IsNullOrEmpty(data))
             {
-                if (useTcpMessaging)
-                {
-                    SendToDatapool(FormatMessage(options.Value.Update, "Update", updateId.ToString()));
-                    return;
-                }
+                SendToDatapool(FormatMessage(options.Value.Update, "Update", updateId.ToString()));
+                 return;
+                
                 //else
                 //{
                 //    updateTag.Write(updateId, DateTime.UtcNow, options.Value.SamplePeriod);
@@ -202,11 +195,9 @@ namespace ThermoXRFImportWorker
 
             var info = data.Split(',');
             //_logger.LogInformation($"DpGroup: {_configuration["Data.DpGroup"]}");
-            if (useTcpMessaging)
-            {
-                SendToDatapool(FormatMessage(options.Value.DpGroup, info[0], info[1]));
-                return;
-            }
+            SendToDatapool(FormatMessage(options.Value.DpGroup, info[0], info[1]));
+            return;
+            
             //oxideValues[info[0]].Write(info[1], DateTime.UtcNow, options.Value.SamplePeriod);
         }
 

@@ -11,12 +11,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="ThermoBaseObjects">
-      <HintPath>..\..\..\..\..\..\Program Files (x86)\Thermo\Nautilus\Omni\Viewer\ThermoBaseObjects.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
     <Content Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
