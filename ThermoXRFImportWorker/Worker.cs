@@ -24,6 +24,7 @@ namespace ThermoXRFImportWorker
         private TcpClient client;
         private uint updateId = 0;
         private bool tryingToConnect;
+        private bool waitForNextStatusCheck = false;
 
         //private readonly Dictionary<string, ITagInfo> oxideValues = new Dictionary<string, ITagInfo>();
 
@@ -145,6 +146,7 @@ namespace ThermoXRFImportWorker
                     }
                     await InitializeCommunicationsAsync(stoppingToken);
                 }
+                Thread.Sleep(60000);
             }            
         }
        
