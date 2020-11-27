@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -20,6 +23,8 @@ namespace ThermoXRFImportWorker
         //private string lastFileProcessed = string.Empty;
         private TcpClient client;
         private uint updateId = 0;
+        private bool tryingToConnect;
+
         //private readonly Dictionary<string, ITagInfo> oxideValues = new Dictionary<string, ITagInfo>();
 
 
@@ -28,29 +33,35 @@ namespace ThermoXRFImportWorker
             _logger = logger;
             this.options = options;
             _fileSystemWatcher = fileSystemWatcher;
-            client = tcpClient;
-            InitializeCommunications();
+            client = tcpClient;            
         }
 
-        private void InitializeCommunications()
+        private async Task InitializeCommunicationsAsync(CancellationToken token)
         {
-            try
-            {
-                client.Connect(options.Value.DatapoolIp, options.Value.Port);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("Error attempting to connect to datapool.  {1}", ex.Message);
-            }
-            
-            if (client.Connected)
-            {
-                foreach (var oxide in options.Value.Oxides)
+            while (!token.IsCancellationRequested)
+            {                
+                tryingToConnect = true;
+                try
                 {
-                    SendToDatapool($"CreateTag [<{options.Value.DpGroup}><{oxide}><Double>]");
+                    await client.ConnectAsync(options.Value.DatapoolIp, options.Value.Port, token);
+                    _logger.LogInformation("Connected to Datapool: {1}", DateTime.Now);
                 }
-                SendToDatapool($"CreateTag [<{options.Value.Update}><Update><Int>]");
+                catch (Exception ex)
+                {
+                    _logger.LogError("Error attempting to connect to datapool.  {1}", ex.Message);
+                }
+                if (client.Connected) break; // if connected, break out and continue.
+                // if not connected, wait 1 minute and try again.
+                await Task.Delay(TimeSpan.FromMinutes(1f), token);                
             }
+            tryingToConnect = false;
+
+            foreach (var oxide in options.Value.Oxides)
+            {
+                SendToDatapool($"CreateTag [<{options.Value.DpGroup}><{oxide}><Double>]");
+            }
+            SendToDatapool($"CreateTag [<{options.Value.Update}><Update><Int>]");            
+
             //else
             //{
             //    DatapoolSvr.IpAddress = options.Value.DatapoolIp;
@@ -65,6 +76,8 @@ namespace ThermoXRFImportWorker
 
         public override async Task StartAsync(CancellationToken token)
         {
+            _logger.LogInformation($"Service started: {DateTime.Now}");
+            await InitializeCommunicationsAsync(token);
             _fileSystemWatcher.Created += FileSystemWatcher_Created;
             _fileSystemWatcher.Changed += FileSystemWatcher_Changed;
             _fileSystemWatcher.Path = options.Value.Path;
@@ -72,8 +85,8 @@ namespace ThermoXRFImportWorker
             foreach (var extension in options.Value.Extensions)
             {
                 _fileSystemWatcher.Filters.Add(extension);
-            }           
-            _logger.LogInformation($"Service started: {DateTime.Now}");
+            }
+            await base.StartAsync(token);
             //_logger.LogInformation("Data from appsettings: Path = {0}, DatapoolIp = {1}, DpGroup = {2}, Update = {3}, SamplePeriod = {4}",
             //    _configuration["Data:Path"], _configuration["Data:DatapoolIp"], _configuration["Data:DpGroup"],
             //    _configuration["Data:Update"], _configuration["Data:SamplePeriod"]);
@@ -89,6 +102,7 @@ namespace ThermoXRFImportWorker
             //}
             //updateTag.Dispose();
             _logger.LogInformation($"Service stopped: {DateTime.Now}");
+            await base.StopAsync(token);
         }
 
         private void FileSystemWatcher_Changed(object sender, FileSystemEventArgs e)
@@ -120,10 +134,30 @@ namespace ThermoXRFImportWorker
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             while (!stoppingToken.IsCancellationRequested)
+            {                
+                if (!GetTcpClientStatus() && !tryingToConnect)   // Check to see if the datapool server is down.  If so, retry connection 
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(5f), stoppingToken);
+                    if (client.Connected)                       // If there is an existing connection, close and start a new one.
+                    {
+                        client.Close();
+                        client = new TcpClient();
+                    }
+                    await InitializeCommunicationsAsync(stoppingToken);
+                }
+            }            
+        }
+       
+        private bool GetTcpClientStatus()
+        {
+            try
             {
-                
+                using (TcpClient checkClient = new TcpClient(options.Value.DatapoolIp, options.Value.Port)) { return true; }
             }
-            
+            catch
+            {
+                return false;                
+            }
         }
 
         private void RunScript(string filename)
@@ -191,7 +225,7 @@ namespace ThermoXRFImportWorker
             {
             _logger.LogInformation(data);
             }
-            SendToDatapool(data);
+            SendToDatapool(data, true);
         }
 
         private void SendToDatapool(string data, bool useTcpMessaging)
@@ -232,17 +266,16 @@ namespace ThermoXRFImportWorker
             data = unicode.GetBytes(msg);
             try
             {
+                NetworkStream stream = client.GetStream();
 
-            NetworkStream stream = client.GetStream();
+                stream.Write(data, 0, data.Length);
+                data = new byte[256];
 
-            stream.Write(data, 0, data.Length);
-            data = new byte[256];
+                string responseData = string.Empty;
 
-            string responseData = string.Empty;
-
-            Int32 bytes = stream.Read(data, 0, data.Length);
-            responseData = System.Text.Encoding.ASCII.GetString(data, 0, bytes);
-            return responseData;
+                Int32 bytes = stream.Read(data, 0, data.Length);
+                responseData = System.Text.Encoding.ASCII.GetString(data, 0, bytes);
+                return responseData;
             }
             catch (Exception ex)
             {
